@@ -236,6 +236,7 @@ class ExecuteProcessClass
         Console.WriteLine("AlphaInterLeaving: " + alphaInterleaving);
         Console.WriteLine("Recursion Bound: " + recursionBound);
         Console.WriteLine("Folder Path: " + folderPath);
+        Console.WriteLine("Corral Path: " + corralExecutablePath);
         Console.WriteLine("################################################");
     }
 
