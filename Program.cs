@@ -20,12 +20,12 @@ class ExecuteProcessClass
     public static Queue<string> fileQueue;
     public static TimeSpan timeout = new TimeSpan();
 
-    // Print a file with any known extension.
     public void startVerification()
     {
         string inputFilesDirectory = folderPath;
         filePaths = Directory.GetFiles(inputFilesDirectory, "*.bpl");
         fileQueue = new Queue<string>(filePaths);
+        DateTime lastZ3KillTime = DateTime.Now;
         while (true)
         {
             if (corralProcessList.Count < totalParallelProcess && fileQueue.Count > 0)
@@ -46,9 +46,22 @@ class ExecuteProcessClass
                     }
                 }
             }
-            removeCompletedProcess();
-            removeTimedoutProcess();
-            killZ3ProcessAccToTimeTaken();
+            try
+            {
+                removeCompletedProcess();
+                removeTimedoutProcess();
+            }
+            catch
+            {
+                Console.WriteLine("EXCEPTION HANDLED in remove completed or timedout process");
+                Console.WriteLine("Total process as of now :" + corralProcessList.Count);
+            }
+            if ((DateTime.Now - lastZ3KillTime).TotalSeconds > 300)
+            {
+                // Kill z3 processes which are executing for more than timeout every 5 minutes
+                killZ3ProcessAccToTimeTaken();
+                lastZ3KillTime = DateTime.Now;
+            }
             if (corralProcessList.Count == 0 && fileQueue.Count == 0)
                 break;
         }
@@ -183,9 +196,39 @@ class ExecuteProcessClass
         }
         else
         {
-            Console.WriteLine("Kill process did not finish");
+            Console.WriteLine("command: " + fileName + " " + arguments + "did not finish");
+            if (fileName.Equals("pgrep"))
+            {
+                if (process.WaitForExit((int)timeout.TotalMilliseconds))
+                    stdout = process.StandardOutput.ReadToEnd();
+                else
+                {
+                    try
+                    {
+                        process.Kill();
+                        process.WaitForExit();
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Exception in kill and waitForExit");
+                        return 1;
+                    }
+                }
+            }
+            else
+            {
+                try
+                {
+                    process.Kill();
+                    process.WaitForExit();
+                }
+                catch
+                {
+                    Console.WriteLine("Exception in kill and waitForExit");
+                    return 1;
+                }
+            }
         }
-
         return process.ExitCode;
     }
 
@@ -255,7 +298,7 @@ class ExecuteProcessClass
         corralProcessList = new List<Process>();
         startTime = new Dictionary<Process, DateTime>();
         outputWriter = new Dictionary<Process, StreamWriter>();
-        timeout = TimeSpan.FromMilliseconds(10000);
+        timeout = TimeSpan.FromMilliseconds(bufferTime*1000);
         setupZ3KillScript();
         ExecuteProcessClass myExecute = new ExecuteProcessClass();
 
