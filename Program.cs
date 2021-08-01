@@ -7,8 +7,8 @@ class ExecuteProcessClass
 {
     public static string corralExecutablePath;
     public static string folderPath;
-    public static int totalParallelProcess = 8;
-    public static int timeToVerify = 3600;
+    public static int totalParallelProcess = 1;
+    public static int timeToVerify = 900;
     public static int bufferTime = 60;
     public static int relaxTime = 10;
     public static int alphaInterleaving = 100;
@@ -17,7 +17,7 @@ class ExecuteProcessClass
     public static string[] filePaths;
     public static Queue<string> fileQueue;
     public static Process lastProcess;
-
+    public static string memoryTrackingPath;
     public void startVerification()
     {
         string inputFilesDirectory = folderPath;
@@ -44,8 +44,16 @@ class ExecuteProcessClass
 
                 Console.WriteLine(filename);
                 cnt++;
+                if (totalParallelProcess == 1)
+                {
+                    string comm = "sleep " + relaxTime + "\n";
+                    File.AppendAllText(currBashFile, comm);
+                    comm = "nohup mono " + memoryTrackingPath + " 1 > " + filename + "_memory.txt &\n";
+                    File.AppendAllText(currBashFile, comm);
+                }
                 if (cnt >= totalParallelProcess)
                     break;
+
             }
             //Kill z3 processes
             File.AppendAllText(currBashFile, "sleep " + (timeToVerify + relaxTime) + "\n");
@@ -120,6 +128,10 @@ class ExecuteProcessClass
         // Initial configurations
         corralExecutablePath = args[0];
         folderPath = args[1];
+        if(args.Length == 3)
+        {
+            memoryTrackingPath = args[2];
+        }
         ExecuteProcessClass myExecute = new ExecuteProcessClass();
 
         printConfig();
